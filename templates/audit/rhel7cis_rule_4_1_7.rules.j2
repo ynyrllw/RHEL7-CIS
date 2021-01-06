@@ -1,2 +1,8 @@
--w /etc/selinux/ -p wa -k MAC-policy
--w /usr/share/selinux/ -p wa -k MAC-policy
+-w /var/log/faillog -p wa -k logins
+-w /var/log/lastlog -p wa -k logins
+{% if 'pam_tally2.so' in rhel7cis_4_1_7_tally2_check %}
+-w /var/log/tallylog -p wa -k logins\
+{% endif%}
+{% if 'pam_tally2.so' not in rhel7cis_4_1_7_tally2_check %}
+-w /var/run/faillock/ -p wa -k logins
+{% endif %}

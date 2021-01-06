@@ -1,80 +1,34 @@
 ---
-- name: "NOTSCORED | 4.1.1.1 | PATCH | Ensure audit log storage size is configured"
-  lineinfile:
-      dest: /etc/audit/auditd.conf
-      regexp: "^max_log_file( |=)"
-      line: "max_log_file = 10"
+- name: "AUTOMATED | 4.1.1.1 | PATCH | Ensure audit log storage size is configured"
+  yum:
+      name: ['audit', 'audit-libs']
       state: present
   when:
-      - rhel7cis_rule_4_1_1_1|bool
+      - rhel7cis_rule_4_1_1_1
   notify: restart auditd
   tags:
       - level2
       - auditd
-      - patch
+      - automated
       - rule_4.1.1.1
 
-- name: "SCORED | 4.1.1.2 | PATCH | Ensure system is disabled when audit logs are full"
-  lineinfile:
-      dest: /etc/audit/auditd.conf
-      regexp: "^admin_space_left_action"
-      line: "admin_space_left_action = {{ rhel7cis_auditd['admin_space_left_action'] }}"
-      state: present
-  when:
-      - rhel7cis_rule_4_1_1_2|bool
-  notify: restart auditd
-  tags:
-      - level2
-      - auditd
-      - patch
-      - rule_4.1.1.2
-
-- name: "SCORED | 4.1.1.2 | PATCH | Ensure email on non-admin audit space alert"
-  lineinfile:
-      dest: /etc/audit/auditd.conf
-      regexp: "^space_left_action"
-      line: "space_left_action = email"
-      state: present
-  when:
-      - rhel7cis_rule_4_1_1_2|bool
-  notify: restart auditd
-  tags:
-      - level2
-      - auditd
-      - patch
-      - rule_4.1.1.2
-
-- name: "SCORED | 4.1.1.3 | PATCH | Ensure audit logs are not automatically deleted"
-  lineinfile:
-      dest: /etc/audit/auditd.conf
-      regexp: "^max_log_file_action"
-      line: "max_log_file_action = {{ rhel7cis_auditd['max_log_file_action'] }}"
-      state: present
-  when:
-      - rhel7cis_rule_4_1_1_3|bool
-  notify: restart auditd
-  tags:
-      - level2
-      - auditd
-      - patch
-      - rule_4.1.1.3
-
-- name: "SCORED | 4.1.2 | PATCH | Ensure auditd service is enabled"
+- name: "AUTOMATED | 4.1.1.2 | PATCH | Ensure auditd service is enabled"
   service:
       name: auditd
       state: started
       enabled: yes
   when:
       - not rhel7cis_skip_for_travis
-      - rhel7cis_rule_4_1_2|bool
+      - rhel7cis_rule_4_1_1_2
       - ansible_connection != 'docker'
   tags:
       - level2
       - auditd
       - patch
-      - rule_4.1.2
+      - automated
+      - rule_4.1.1.2
 
-- name: "SCORED | 4.1.3 | PATCH | Ensure auditing for processes that start prior to auditd is enabled"
+- name: "AUTOMATED | 4.1.1.3 | PATCH | Ensure auditing for processes that start prior to auditd is enabled"
   replace:
       dest: /etc/default/grub
       regexp: '(^GRUB_CMDLINE_LINUX\s*\=\s*)(?:")(.+)(?<!audit=1)(?:")'
@@ -83,14 +37,112 @@
   ignore_errors: yes
   notify: generate new grub config
   when:
-      - rhel7cis_rule_4_1_3|bool
+      - rhel7cis_rule_4_1_1_3
   tags:
       - level2
       - auditd
       - patch
+      - automated
+      - rule_4.1.1.3
+
+- name: "AUTOMATED | 4.1.2.1 | PATCH | Ensure audit log storage size is configured"
+  lineinfile:
+      dest: /etc/audit/auditd.conf
+      regexp: "^max_log_file( |=)"
+      line: "max_log_file = 10"
+      state: present
+  when:
+      - rhel7cis_rule_4_1_2_1
+  notify: restart auditd
+  tags:
+      - level2
+      - auditd
+      - patch
+      - automated
+      - rule_4.1.2.1
+
+- name: "AUTOMATED | 4.1.2.2 | PATCH | Ensure audit logs are not automatically deleted"
+  lineinfile:
+      dest: /etc/audit/auditd.conf
+      regexp: "^max_log_file_action"
+      line: "max_log_file_action = {{ rhel7cis_auditd['max_log_file_action'] }}"
+      state: present
+  when:
+      - rhel7cis_rule_4_1_2_2
+  notify: restart auditd
+  tags:
+      - level2
+      - auditd
+      - patch
+      - automated
+      - rule_4.1.2.2
+
+- name: "AUTOMATED | 4.1.2.3 | PATCH | Ensure system is disabled when audit logs are full"
+  lineinfile:
+      dest: /etc/audit/auditd.conf
+      regexp: "^admin_space_left_action"
+      line: "admin_space_left_action = {{ rhel7cis_auditd['admin_space_left_action'] }}"
+      state: present
+  when:
+      - rhel7cis_rule_4_1_2_3
+  notify: restart auditd
+  tags:
+      - level2
+      - auditd
+      - patch
+      - automated
+      - rule_4.1.1.2
+
+- name: "AUTOMATED | 4.1.2.4 | PATCH | Ensure audit_backlog_limit is sufficient"
+  block:
+      - name: "AUTOMATED | 4.1.2.4 | AUDIT | Ensure audit_backlog_limit is sufficient | Grep GRUB_CMDLINE_LINUX parameter"
+        shell: grep GRUB_CMDLINE_LINUX /etc/default/grub | cut -f2 -d'"'
+        changed_when: false
+        failed_when: false
+        register: rhel7cis_4_1_2_4_grub_cmdline_linux_settings
+
+      - name: "AUTOMATED | 4.1.2.4 | PATCH | Ensure audit_backlog_limit is sufficient | Set audit_backlog_limit if not configured"
+        lineinfile:
+            dest: /etc/default/grub
+            regexp: '^GRUB_CMDLINE_LINUX='
+            line: 'GRUB_CMDLINE_LINUX="{{ rhel7cis_4_1_2_4_grub_cmdline_linux_settings.stdout }} audit_backlog_limit={{ rhel7cis_audit_backlog_limit }}"'
+        notify: grub2cfg
+        when: '"audit_backlog_limit" not in rhel7cis_4_1_2_4_grub_cmdline_linux_settings.stdout'
+
+      - name: "AUTOMATED | 4.1.2.4 | PATCH | Ensure audit_backlog_limit is sufficient | Adjust audit_backlog_limit if exists"
+        replace:
+            dest: /etc/default/grub
+            regexp: 'audit_backlog_limit=([^\D]+)'
+            replace: 'audit_backlog_limit={{ rhel7cis_audit_backlog_limit }}'
+        notify: grub2cfg
+        when: '"audit_backlog_limit" in rhel7cis_4_1_2_4_grub_cmdline_linux_settings.stdout'
+  when:
+      - rhel7cis_rule_4_1_2_4
+  tags:
+      - level2
+      - grub
+      - patch
+      - automated
+      - rule_4.1.2.4
+
+- name: "AUTOMATED | 4.1.3 | PATCH | Ensure events that modify date and time information are collected"
+  template:
+      src: audit/rhel7cis_rule_4_1_3.rules.j2
+      dest: /etc/audit/rules.d/rhel7cis_rule_4_1_3.rules
+      owner: root
+      group: root
+      mode: 0600
+  when:
+      - rhel7cis_rule_4_1_3
+  notify: restart auditd
+  tags:
+      - level2
+      - auditd
+      - patch
+      - automated
       - rule_4.1.3
 
-- name: "SCORED | 4.1.4 | PATCH | Ensure events that modify date and time information are collected"
+- name: "AUTOMATED | 4.1.4 | PATCH | Ensure events that modify user/group information are collected"
   template:
       src: audit/rhel7cis_rule_4_1_4.rules.j2
       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_4.rules
@@ -98,15 +150,16 @@
       group: root
       mode: 0600
   when:
-      - rhel7cis_rule_4_1_4|bool
+      - rhel7cis_rule_4_1_4
   notify: restart auditd
   tags:
       - level2
       - auditd
       - patch
+      - automated
       - rule_4.1.4
 
-- name: "SCORED | 4.1.5 | PATCH | Ensure events that modify user/group information are collected"
+- name: "AUTOMATED | 4.1.5 | PATCH | Ensure events that modify the system's network environment are collected"
   template:
       src: audit/rhel7cis_rule_4_1_5.rules.j2
       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_5.rules
@@ -114,15 +167,16 @@
       group: root
       mode: 0600
   when:
-      - rhel7cis_rule_4_1_5|bool
+      - rhel7cis_rule_4_1_5
   notify: restart auditd
   tags:
       - level2
       - auditd
       - patch
+      - automated
       - rule_4.1.5
 
-- name: "SCORED | 4.1.6 | PATCH | Ensure events that modify the system's network environment are collected"
+- name: "AUTOMATED | 4.1.6 | PATCH | Ensure events that modify the system's Mandatory Access Controls are collected"
   template:
       src: audit/rhel7cis_rule_4_1_6.rules.j2
       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_6.rules
@@ -130,31 +184,41 @@
       group: root
       mode: 0600
   when:
-      - rhel7cis_rule_4_1_6|bool
+      - rhel7cis_rule_4_1_6
   notify: restart auditd
   tags:
       - level2
       - auditd
       - patch
+      - automated
       - rule_4.1.6
 
-- name: "SCORED | 4.1.7 | PATCH | Ensure events that modify the system's Mandatory Access Controls are collected"
-  template:
-      src: audit/rhel7cis_rule_4_1_7.rules.j2
-      dest: /etc/audit/rules.d/rhel7cis_rule_4_1_7.rules
-      owner: root
-      group: root
-      mode: 0600
+- name: "AUTOMATED | 4.1.7 | PATCH | Ensure login and logout events are collected"
+  block:
+      - name: "AUTOMATED | 4.1.7 | AUDIT | Ensure login and logout events are collected | Check for pam_fallock or pam_tally2"
+        shell: grep pam_tally2.so /etc/pam.d/system-auth /etc/pam.d/password-auth
+        changed_when: false
+        failed_when: false
+        register: rhel7cis_4_1_7_tally2_check
+
+      - name: "AUTOMATED | 4.1.7 | PATCH | Ensure login and logout events are collected | Set login and logout events"
+        template:
+            src: audit/rhel7cis_rule_4_1_7.rules.j2
+            dest: /etc/audit/rules.d/rhel7cis_rule_4_1_7.rules
+            owner: root
+            group: root
+            mode: 0600
+        notify: restart auditd
   when:
-      - rhel7cis_rule_4_1_7|bool
-  notify: restart auditd
+      - rhel7cis_rule_4_1_7
   tags:
       - level2
       - auditd
       - patch
+      - automated
       - rule_4.1.7
 
-- name: "SCORED | 4.1.8 | PATCH | Ensure login and logout events are collected"
+- name: "AUTOMATED | 4.1.8 | PATCH | Ensure session initiation information is collected"
   template:
       src: audit/rhel7cis_rule_4_1_8.rules.j2
       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_8.rules
@@ -162,15 +226,16 @@
       group: root
       mode: 0600
   when:
-      - rhel7cis_rule_4_1_8|bool
+      - rhel7cis_rule_4_1_8
   notify: restart auditd
   tags:
       - level2
       - auditd
       - patch
+      - automated
       - rule_4.1.8
 
-- name: "SCORED | 4.1.9 | PATCH | Ensure session initiation information is collected"
+- name: "AUTOMATED | 4.1.9 | PATCH | Ensure discretionary access control permission modification events are collected"
   template:
       src: audit/rhel7cis_rule_4_1_9.rules.j2
       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_9.rules
@@ -178,15 +243,16 @@
       group: root
       mode: 0600
   when:
-      - rhel7cis_rule_4_1_9|bool
+      - rhel7cis_rule_4_1_9
   notify: restart auditd
   tags:
       - level2
       - auditd
       - patch
+      - automated
       - rule_4.1.9
 
-- name: "SCORED | 4.1.10 | PATCH | Ensure discretionary access control permission modification events are collected"
+- name: "AUTOMATED | 4.1.10 | PATCH | Ensure unsuccessful unauthorized file access attempts are collected"
   template:
       src: audit/rhel7cis_rule_4_1_10.rules.j2
       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_10.rules
@@ -194,60 +260,58 @@
       group: root
       mode: 0600
   when:
-      - rhel7cis_rule_4_1_10|bool
+      - rhel7cis_rule_4_1_10
   notify: restart auditd
   tags:
       - level2
       - auditd
       - patch
+      - automated
       - rule_4.1.10
 
-- name: "SCORED | 4.1.11 | PATCH | Ensure unsuccessful unauthorized file access attempts are collected"
-  template:
-      src: audit/rhel7cis_rule_4_1_11.rules.j2
-      dest: /etc/audit/rules.d/rhel7cis_rule_4_1_11.rules
-      owner: root
-      group: root
-      mode: 0600
+- name: "AUTOMATED | 4.1.11 | PATCH | Ensure use of privileged commands is collected"
+  block:
+      - name: "AUTOMATED | 4.1.11 | AUDIT | Ensure use of privileged commands is collected"
+        shell: for i in  $(df | grep '^/dev' | awk '{ print $NF }'); do find $i -xdev -type f -perm -4000 -o -type f -perm -2000 2>/dev/null; done
+        register: priv_procs
+        changed_when: no
+        check_mode: no
+
+      - name: "AUTOMATED | 4.1.11 | PATCH | Ensure use of privileged commands is collected"
+        template:
+            src: audit/rhel7cis_rule_4_1_11.rules.j2
+            dest: /etc/audit/rules.d/rhel7cis_rule_4_1_11.rules
+            owner: root
+            group: root
+            mode: 0600
+        notify: restart auditd
   when:
-      - rhel7cis_rule_4_1_11|bool
-  notify: restart auditd
+      - rhel7cis_rule_4_1_11
   tags:
       - level2
       - auditd
       - patch
+      - automated
       - rule_4.1.11
 
-- name: "SCORED | 4.1.12 | PATCH | Ensure use of privileged commands is collected"
-  shell: for i in  $(df | grep '^/dev' | awk '{ print $NF }'); do find $i -xdev -type f -perm -4000 -o -type f -perm -2000 2>/dev/null; done
-  register: priv_procs
-  changed_when: no
-  check_mode: no
-  when:
-      - rhel7cis_rule_4_1_12|bool
-  tags:
-      - level2
-      - auditd
-      - patch
-      - rule_4.1.12
-
-- name: "SCORED | 4.1.12 | PATCH | Ensure use of privileged commands is collected"
+- name: "AUTOMATED | 4.1.12 | PATCH | Ensure successful file system mounts are collected"
   template:
       src: audit/rhel7cis_rule_4_1_12.rules.j2
       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_12.rules
       owner: root
       group: root
       mode: 0600
-  notify: restart auditd
   when:
-      - rhel7cis_rule_4_1_12|bool
+      - rhel7cis_rule_4_1_12
+  notify: restart auditd
   tags:
       - level2
       - auditd
       - patch
+      - automated
       - rule_4.1.12
 
-- name: "SCORED | 4.1.13 | PATCH | Ensure successful file system mounts are collected"
+- name: "AUTOMATED | 4.1.13 | PATCH | Ensure file deletion events by users are collected"
   template:
       src: audit/rhel7cis_rule_4_1_13.rules.j2
       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_13.rules
@@ -255,15 +319,16 @@
       group: root
       mode: 0600
   when:
-      - rhel7cis_rule_4_1_13|bool
+      - rhel7cis_rule_4_1_13
   notify: restart auditd
   tags:
       - level2
       - auditd
       - patch
+      - automated
       - rule_4.1.13
 
-- name: "SCORED | 4.1.14 | PATCH | Ensure file deletion events by users are collected"
+- name: "AUTOMATED | 4.1.14 | PATCH | Ensure changes to system administration scope (sudoers) is collected"
   template:
       src: audit/rhel7cis_rule_4_1_14.rules.j2
       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_14.rules
@@ -271,15 +336,16 @@
       group: root
       mode: 0600
   when:
-      - rhel7cis_rule_4_1_14|bool
+      - rhel7cis_rule_4_1_14
   notify: restart auditd
   tags:
       - level2
       - auditd
       - patch
+      - automated
       - rule_4.1.14
 
-- name: "SCORED | 4.1.15 | PATCH | Ensure changes to system administration scope (sudoers) is collected"
+- name: "AUTOMATED | 4.1.15 | PATCH | Ensure system administrator actions (sudolog) are collected"
   template:
       src: audit/rhel7cis_rule_4_1_15.rules.j2
       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_15.rules
@@ -287,15 +353,16 @@
       group: root
       mode: 0600
   when:
-      - rhel7cis_rule_4_1_15|bool
+      - rhel7cis_rule_4_1_15
   notify: restart auditd
   tags:
       - level2
       - auditd
       - patch
+      - automated
       - rule_4.1.15
 
-- name: "SCORED | 4.1.16 | PATCH | Ensure system administrator actions (sudolog) are collected"
+- name: "AUTOMATED | 4.1.16 | PATCH | Ensure kernel module loading and unloading is collected"
   template:
       src: audit/rhel7cis_rule_4_1_16.rules.j2
       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_16.rules
@@ -303,15 +370,16 @@
       group: root
       mode: 0600
   when:
-      - rhel7cis_rule_4_1_16|bool
+      - rhel7cis_rule_4_1_16
   notify: restart auditd
   tags:
       - level2
       - auditd
       - patch
+      - automated
       - rule_4.1.16
 
-- name: "SCORED | 4.1.17 | PATCH | Ensure kernel module loading and unloading is collected"
+- name: "AUTOMATED | 4.1.17 | PATCH | Ensure the audit configuration is immutable"
   template:
       src: audit/rhel7cis_rule_4_1_17.rules.j2
       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_17.rules
@@ -319,134 +387,91 @@
       group: root
       mode: 0600
   when:
-      - rhel7cis_rule_4_1_17|bool
+      - rhel7cis_rule_4_1_17
   notify: restart auditd
   tags:
       - level2
       - auditd
       - patch
+      - automated
       - rule_4.1.17
 
-- name: "SCORED | 4.1.18 | PATCH | Ensure the audit configuration is immutable"
-  template:
-      src: audit/rhel7cis_rule_4_1_18.rules.j2
-      dest: /etc/audit/rules.d/rhel7cis_rule_4_1_18.rules
-      owner: root
-      group: root
-      mode: 0600
-  when:
-      - rhel7cis_rule_4_1_18|bool
-  notify: restart auditd
-  tags:
-      - level2
-      - auditd
-      - patch
-      - rule_4.1.18
-
-- name: "SCORED | 4.2.3 | PATCH | Ensure rsyslog or syslog-ng is installed"
+- name: "AUTOMATED | 4.2.1.1 | PATCH | Ensure rsyslog or syslog-ng is installed"
   yum:
       name: "{{ rhel7cis_syslog }}"
       state: present
   when:
-      - rhel7cis_rule_4_2_3|bool
+      - rhel7cis_rule_4_2_1_1
   tags:
       - level1
       - patch
-      - rule_4.2.3
+      - automated
+      - rule_4.2.1.1
 
-- name: "SCORED | 4.2.1.1 | PATCH | Ensure rsyslog Service is enabled"
+- name: "AUTOMATED | 4.2.1.2 | PATCH | Ensure rsyslog Service is enabled"
   service:
       name: rsyslog
       enabled: yes
   when:
-      - rhel7cis_rule_4_2_1_1|bool
+      - rhel7cis_rule_4_2_1_2
       - rhel7cis_syslog == 'rsyslog'
   tags:
-      - level2
+      - level1
       - patch
       - rsyslog
-      - rule_4.2.1.1
+      - automated
+      - rule_4.2.1.2
 
-- name: "NOTSCORED | 4.2.1.2 | PATCH | Ensure logging is configured"
+- name: "AUTOMATED | 4.2.1.3 | PATCH | Ensure rsyslog default file permissions configured"
+  lineinfile:
+      dest: /etc/rsyslog.conf
+      regexp: '^\$FileCreateMode'
+      line: '$FileCreateMode 0640'
+  notify: restart rsyslog
+  when:
+      - rhel7cis_rule_4_2_1_3
+  tags:
+      - level1
+      - patch
+      - automated
+      - rule_4.2.1.3
+
+- name: "MANUAL | 4.2.1.4 | PATCH | Ensure logging is configured"
   block:
-      - name: "NOTSCORED | 4.2.1.2 | AUDIT | Ensure logging is configured | rsyslog current config message out"
+      - name: "MANUAL | 4.2.1.4 | AUDIT | Ensure logging is configured | rsyslog current config message out"
         command: cat /etc/rsyslog.conf
         become: yes
         changed_when: false
         failed_when: no
-        register: rhel_07_4_2_1_2_audit
-      - debug:
+        register: rhel_07_4_2_1_4_audit
+
+      - name: "MANUAL | 4.2.1.4 | PATCH | Ensure logging is configured | Debug out rsyslog settings"
+        debug:
             msg:
                 - "These are the current logging configurations for rsyslog, please review:"
-                - "{{ rhel_07_4_2_1_2_audit.stdout_lines }}"
+                - "{{ rhel_07_4_2_1_4_audit.stdout_lines }}"
+        when:
+            - not rhel7cis_rsyslog_ansibleManaged
 
-      - name: "NOTSCORED | 4.2.1.2 | PATCH | Ensure logging is configured | mail.* log setting"
+      - name: "MANUAL | 4.2.1.4 | PATCH | Ensure logging is configured | Set logging settings lineinfile"
         lineinfile:
             path: /etc/rsyslog.conf
             state: present
-            regexp: '^mail\.\*(.*)$'
-            line: 'mail.*                                                  -/var/log/mail'
-            insertafter: '# Log all the mail messages in one place.'
+            regexp: "{{ item.regexp }}"
+            line: "{{ item.line}}"
+            insertafter: "{{ item.insertafter }}"
+        with_items:
+            - { regexp: '^mail\.\*(.*)$', line: 'mail.*                                                  -/var/log/mail', insertafter: '# Log all the mail messages in one place.' }
+            - { regexp: '^mail\.\info(.*)$', line: 'mail.info                                               -/var/log/mail.info', insertafter: '# Log all the mail messages in one place.' }
+            - { regexp: '^mail\.\warning(.*)$', line: 'mail.warning                                            -/var/log/mail.warning', insertafter: '# Log all the mail messages in one place.' }
+            - { regexp: '^mail\.\err(.*)$', line: 'mail.err                                                /var/log/mail.err', insertafter: '# Log all the mail messages in one place.' }
+            - { regexp: '^news\.\crit(.*)$', line: 'news.crit                                               -/var/log/news/news.crit', insertafter: '# Save news errors of level crit and higher in a special file.' }
+            - { regexp: '^news\.\notice(.*)$', line: 'news.notice                                             -/var/log/news/news.crit', insertafter: '# Save news errors of level crit and higher in a special file.' }
         notify: restart rsyslog
         when:
             - rhel7cis_rsyslog_ansibleManaged
 
-      - name: "NOTSCORED | 4.2.1.2 | PATCH | Ensure logging is configured | mail.info log setting"
-        lineinfile:
-            path: /etc/rsyslog.conf
-            state: present
-            regexp: '^mail\.\info(.*)$'
-            line: 'mail.info                                               -/var/log/mail.info'
-            insertafter: '# Log all the mail messages in one place.'
-        notify: restart rsyslog
-        when:
-            - rhel7cis_rsyslog_ansibleManaged
-
-      - name: "NOTSCORED | 4.2.1.2 | PATCH | Ensure logging is configured | mail.warning log setting"
-        lineinfile:
-            path: /etc/rsyslog.conf
-            state: present
-            regexp: '^mail\.\warning(.*)$'
-            line: 'mail.warning                                            -/var/log/mail.warning'
-            insertafter: '# Log all the mail messages in one place.'
-        notify: restart rsyslog
-        when:
-            - rhel7cis_rsyslog_ansibleManaged
-
-      - name: "NOTSCORED | 4.2.1.2 | PATCH | Ensure logging is configured | mail.err log setting"
-        lineinfile:
-            path: /etc/rsyslog.conf
-            state: present
-            regexp: '^mail\.\err(.*)$'
-            line: 'mail.err                                                /var/log/mail.err'
-            insertafter: '# Log all the mail messages in one place.'
-        notify: restart rsyslog
-        when:
-            - rhel7cis_rsyslog_ansibleManaged
-
-      - name: "NOTSCORED | 4.2.1.2 | PATCH | Ensure logging is configured | news.crit log setting"
-        lineinfile:
-            path: /etc/rsyslog.conf
-            state: present
-            regexp: '^news\.\crit(.*)$'
-            line: 'news.crit                                               -/var/log/news/news.crit'
-            insertafter: '# Save news errors of level crit and higher in a special file.'
-        notify: restart rsyslog
-        when:
-            - rhel7cis_rsyslog_ansibleManaged
-
-      - name: "NOTSCORED | 4.2.1.2 | PATCH | Ensure logging is configured | news.notice log setting"
-        lineinfile:
-            path: /etc/rsyslog.conf
-            state: present
-            regexp: '^news\.\notice(.*)$'
-            line: 'news.notice                                             -/var/log/news/news.crit'
-            insertafter: '# Save news errors of level crit and higher in a special file.'
-        notify: restart rsyslog
-        when:
-            - rhel7cis_rsyslog_ansibleManaged
-
-      - name: "NOTSCORED | 4.2.1.2 | PATCH | Ensure logging is configured | Misc. log setting"
+      - name: "MANUAL | 4.2.1.4 | PATCH | Ensure logging is configured | Misc. log setting"
         blockinfile:
             path: /etc/rsyslog.conf
             state: present
@@ -462,7 +487,7 @@
         when:
             - rhel7cis_rsyslog_ansibleManaged
 
-      - name: "NOTSCORED | 4.2.1.2 | PATCH | Ensure logging is configured | Local log settings"
+      - name: "MANUAL | 4.2.1.4 | PATCH | Ensure logging is configured | Local log settings"
         blockinfile:
             path: /etc/rsyslog.conf
             state: present
@@ -477,27 +502,15 @@
             insertafter: '#### RULES ####'
         notify: restart rsyslog
   when:
-      - rhel7cis_rule_4_2_1_2|bool
+      - rhel7cis_rule_4_2_1_4
   tags:
       - level1
       - patch
       - rsyslog
-      - rule_4.2.1.2
+      - manual
+      - rule_4.2.1.4
 
-- name: "SCORED | 4.2.1.3 | PATCH | Ensure rsyslog default file permissions configured"
-  lineinfile:
-      dest: /etc/rsyslog.conf
-      regexp: '^\$FileCreateMode'
-      line: '$FileCreateMode 0640'
-  notify: restart rsyslog
-  when:
-      - rhel7cis_rule_4_2_1_3|bool
-  tags:
-      - level1
-      - patch
-      - rule_4.2.1.3
-
-- name: "SCORED | 4.2.1.4 | PATCH | Ensure rsyslog is configured to send logs to a remote log host"
+- name: "AUTOMATED | 4.2.1.5 | PATCH | Ensure rsyslog is configured to send logs to a remote log host"
   blockinfile:
       path: /etc/rsyslog.conf
       state: present
@@ -511,17 +524,18 @@
       - result.rc != 257
   notify: restart rsyslog
   when:
-      - rhel7cis_rule_4_2_1_4|bool
+      - rhel7cis_rule_4_2_1_5
       - rhel7cis_remote_log_server is defined
   tags:
       - level1
       - patch
-      - rule_4.2.1.4
+      - automated
+      - rule_4.2.1.5
       - rsyslog
 
-- name: "NOTSCORED | 4.2.1.5 | PATCH | Ensure remote rsyslog messages are only accepted on designated log hosts."
+- name: "MANUAL | 4.2.1.6 | PATCH | Ensure remote rsyslog messages are only accepted on designated log hosts."
   block:
-      - name: "NOTSCORED | 4.2.1.5 | PATCH | Ensure remote rsyslog messages are only accepted on designated log hosts. | When not log host"
+      - name: "MANUAL | 4.2.1.6 | PATCH | Ensure remote rsyslog messages are only accepted on designated log hosts. | When not log host"
         replace:
             path: /etc/rsyslog.conf
             regexp: '({{ item }})'
@@ -533,7 +547,7 @@
         when:
             - not rhel7cis_system_is_log_server
 
-      - name: "NOTSCORED | 4.2.1.5 | PATCH | Ensure remote rsyslog messages are only accepted on designated log hosts. | When log host"
+      - name: "MANUAL | 4.2.1.6 | PATCH | Ensure remote rsyslog messages are only accepted on designated log hosts. | When log host"
         replace:
             path: /etc/rsyslog.conf
             regexp: '^#(.*{{ item }}.*)'
@@ -545,173 +559,792 @@
         when:
             - rhel7cis_system_is_log_server
   when:
-      - rhel7cis_rule_4_2_1_5|bool
+      - rhel7cis_rule_4_2_1_6
   tags:
       - level1
       - patch
-      - rule_4.2.1.5
+      - manual
+      - rule_4.2.1.6
       - rsyslog
 
-- name: "SCORED | 4.2.2.1 | PATCH | Ensure syslog-ng service is enabled"
-  service:
-      name: syslog-ng
-      enabled: yes
-  when:
-      - rhel7cis_rule_4_2_1_1|bool
-      - rhel7cis_syslog == 'syslog-ng'
-  tags:
-      - level2
-      - patch
-      - rsyslog
-      - rule_4.2.1.1
-
-- name: "NOTSCORED | 4.2.2.2 | AUDIT | Ensure logging is configured"
-  command: cat /etc/syslog-ng/syslog-ng.conf
-  become: yes
-  register: rhel_07_4_2_2_2_audit
-  changed_when: false
-  failed_when: no
-- debug:
-      msg:
-          - "Here is the current syslog-ng logging configuration. Please ensure appropriate logging is set for your facility:"
-          - "{{ rhel_07_4_2_2_2_audit.stdout_lines }}"
-  notify: restart syslog-ng
-  when:
-      - rhel7cis_rule_4_2_2_2|bool
-      - rhel7cis_syslog == 'syslog-ng'
-  tags:
-      - level1
-      - patch
-      - rule_4.2.2.2
-
-- name: "SCORED | 4.2.2.3 | PATCH | Ensure syslog-ng default file permissions configured"
+- name: "AUTOMATED | 4.2.2.1 | PATCH | Ensure journald is configured to send logs to rsyslog"
   lineinfile:
-      dest: /etc/syslog-ng/syslog-ng.conf
-      regexp: "^#options {  "
-      line: "    perm (0640);"
-      insertbefore: 'chain_hostnames '
-  notify: restart syslog-ng
+      path: /etc/systemd/journald.conf
+      regexp: '^[F|f]orward[T|t]o[S|s]yslog='
+      line: "ForwardToSyslog=yes"
   when:
-      - rhel7cis_rule_4_2_2_3|bool
-      - rhel7cis_syslog == 'syslog-ng'
+      - rhel7cis_rule_4_2_2_1
   tags:
       - level1
       - patch
-      - syslog-ng
+      - manual
+      - rule_4.2.2.1
+      - journald
+
+- name: "AUTOMATED | 4.2.2.2 | PATCH | Ensure journald is configured to compress large log files"
+  lineinfile:
+      path: /etc/systemd/journald.conf
+      regexp: '^[C|c]ompress='
+      line: "Compress=yes"
+  when:
+      - rhel7cis_rule_4_2_2_2
+  tags:
+      - level1
+      - patch
+      - automated
+      - rule_4.2.2.2
+      - journald
+
+- name: "AUTOMATED | 4.2.2.3 | PATCH | Ensure journald is configured to write logfiles to persistent disk"
+  lineinfile:
+      path: /etc/systemd/journald.conf
+      regexp: '^[S|s]torage='
+      line: "Storage=persistent"
+  when:
+      - rhel7cis_rule_4_2_2_3
+  tags:
+      - level1
+      - patch
+      - automated
       - rule_4.2.2.3
+      - journald
 
-- name: "NOTSCORED | 4.2.2.4 | PATCH | Ensure syslog-ng is configured to send logs to a remote log host"
-  block:
-      - name: "NOTSCORED | 4.2.2.4 | PATCH | Ensure syslog-ng is configured to send logs to a remote log host | Insert destation data"
-        lineinfile:
-            path: /etc/syslog-ng/syslog-ng.conf
-            state: present
-            regexp: '^destination logserver.*'
-            line: "destination logserver { tcp({{ rhel7cis_remote_log_server }} port(514)); };"
-        notify: restart syslog-ng
-
-      - name: "NOTSCORED | 4.2.2.4 | PATCH | Ensure syslog-ng is configured to send logs to a remote log host | Insert log data"
-        lineinfile:
-            path: /etc/syslog-ng/syslog-ng.conf
-            state: present
-            regexp: '^log.*'
-            line: "log { source(src); destination(logserver); };"
-            insertafter: '^log.*'
-        notify: restart syslog-ng
-  when:
-      - rhel7cis_rule_4_2_2_4|bool
-      - rhel7cis_syslog == 'syslog-ng'
-  tags:
-      - level1
-      - patch
-      - syslog-ng
-      - rule_4.2.2.4
-
-- name: "NOTSCORED | 4.2.2.5 | PATCH | Ensure remote syslog-ng messages are only accepted on designated log hosts"
-  block:
-      - name: "NOTSCORED | 4.2.2.5 | PATCH | Ensure remote syslog-ng messages are only accepted on designated log hosts | Add source net setting"
-        lineinfile:
-            path: /etc/syslog-ng/syslog-ng.conf
-            state: present
-            regexp: '^source net.*'
-            line: "source net{ tcp(); };"
-        notify: restart syslog-ng
-        when:
-            - rhel7cis_syslog == 'syslog-ng'
-            - rhel7cis_system_is_log_server
-
-      - name: "NOTSCORED | 4.2.2.5 | PATCH | Ensure remote syslog-ng messages are only accepted on designated log hosts | Add destionation setting"
-        lineinfile:
-            path: /etc/syslog-ng/syslog-ng.conf
-            state: present
-            regexp: '^destination remote.*'
-            line: 'destination remote { file("/var/log/remote/${FULLHOST}-log"); };'
-        notify: restart syslog-ng
-        when:
-            - rhel7cis_syslog == 'syslog-ng'
-            - rhel7cis_system_is_log_server
-
-      - name: "NOTSCORED | 4.2.2.5 | PATCH | Ensure remote syslog-ng messages are only accepted on designated log hosts | Add log setting"
-        lineinfile:
-            path: /etc/syslog-ng/syslog-ng.conf
-            state: present
-            regexp: '^log.*'
-            line: "log { source(net); destination(remote); };"
-        notify: restart syslog-ng
-        when:
-            - rhel7cis_syslog == 'syslog-ng'
-            - rhel7cis_system_is_log_server
-
-      - name: "NOTSCORED | 4.2.2.5 | PATCH | Ensure remote syslog-ng messages are only accepted on designated log hosts | Remove source net setting"
-        replace:
-            path: /etc/syslog-ng/syslog-ng.conf
-            regexp: '({{ item }})'
-            replace: '#/1'
-        with_items:
-            - '^(\source net)'
-            - '^(\destination remote)'
-            - '^(log { source\(net\))'
-        notify: restart syslog-ng
-        when:
-            - rhel7cis_syslog == 'syslog-ng'
-            - not rhel7cis_system_is_log_server
-  when:
-      - rhel7cis_rule_4_2_2_5|bool
-  tags:
-      - level1
-      - patch
-      - syslog-ng
-      - rule_4.2.2.5
-
-- name: "SCORED | 4.2.4 | PATCH | Ensure permissions on all logfiles are configured"
-  command: find /var/log -type f -exec chmod g-wx,o-rwx {} +
+- name: "AUTOMATED | 4.2.3 | PATCH | Ensure permissions on all logfiles are configured"
+  command: find /var/log -type f -exec chmod g-wx,o-rwx "{}" + -o -type d -exec chmod g-wx,o-rwx "{}" ++
   changed_when: no
   failed_when: no
   when:
-      - rhel7cis_rule_4_2_4|bool
+      - rhel7cis_rule_4_2_3
   tags:
       - level1
       - patch
-      - rule_4.2.4
+      - automated
+      - rule_4.2.3
 
-- name: "NOTSCORED | 4.3 | PATCH | Ensure logrotate is configured"
+- name: "MANUAL | 4.2.4 | AUDIT | Ensure logrotate is configured"
   find:
       paths: /etc/logrotate.d/
   register: log_rotates
   tags:
       - level1
-      - patch
-      - rule_4.3
+      - audit
+      - manual
+      - rule_4.2.4
+# _______________________________OLD BELOW THIS LINE______________________
 
-- name: "NOTSCORED | 4.3 | PATCH | Ensure logrotate is configured"
-  replace:
-      path: "{{ item.path }}"
-      regexp: '^(\s*)(daily|weekly|monthly|yearly)$'
-      replace: "\\1{{ rhel7cis_logrotate }}"
-  with_items:
-      - "{{ log_rotates.files }}"
-      - { path: "/etc/logrotate.conf" }
-  tags:
-      - level1
-      - patch
-      - rule_4.3
+# - name: "NOTSCORED | 4.1.1.1 | PATCH | Ensure audit log storage size is configured"
+#   lineinfile:
+#       dest: /etc/audit/auditd.conf
+#       regexp: "^max_log_file( |=)"
+#       line: "max_log_file = 10"
+#       state: present
+#   when:
+#       - rhel7cis_rule_4_1_1_1|bool
+#   notify: restart auditd
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.1.1
+
+# - name: "SCORED | 4.1.1.2 | PATCH | Ensure system is disabled when audit logs are full"
+#   lineinfile:
+#       dest: /etc/audit/auditd.conf
+#       regexp: "^admin_space_left_action"
+#       line: "admin_space_left_action = {{ rhel7cis_auditd['admin_space_left_action'] }}"
+#       state: present
+#   when:
+#       - rhel7cis_rule_4_1_1_2|bool
+#   notify: restart auditd
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.1.2
+
+# - name: "SCORED | 4.1.1.2 | PATCH | Ensure email on non-admin audit space alert"
+#   lineinfile:
+#       dest: /etc/audit/auditd.conf
+#       regexp: "^space_left_action"
+#       line: "space_left_action = email"
+#       state: present
+#   when:
+#       - rhel7cis_rule_4_1_1_2|bool
+#   notify: restart auditd
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.1.2
+
+# - name: "SCORED | 4.1.1.3 | PATCH | Ensure audit logs are not automatically deleted"
+#   lineinfile:
+#       dest: /etc/audit/auditd.conf
+#       regexp: "^max_log_file_action"
+#       line: "max_log_file_action = {{ rhel7cis_auditd['max_log_file_action'] }}"
+#       state: present
+#   when:
+#       - rhel7cis_rule_4_1_1_3|bool
+#   notify: restart auditd
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.1.3
+
+# - name: "SCORED | 4.1.2 | PATCH | Ensure auditd service is enabled"
+#   service:
+#       name: auditd
+#       state: started
+#       enabled: yes
+#   when:
+#       - not rhel7cis_skip_for_travis
+#       - rhel7cis_rule_4_1_2|bool
+#       - ansible_connection != 'docker'
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.2
+
+# - name: "SCORED | 4.1.3 | PATCH | Ensure auditing for processes that start prior to auditd is enabled"
+#   replace:
+#       dest: /etc/default/grub
+#       regexp: '(^GRUB_CMDLINE_LINUX\s*\=\s*)(?:")(.+)(?<!audit=1)(?:")'
+#       replace: '\1"\2 audit=1"'
+#       follow: yes
+#   ignore_errors: yes
+#   notify: generate new grub config
+#   when:
+#       - rhel7cis_rule_4_1_3|bool
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.3
+
+# - name: "SCORED | 4.1.4 | PATCH | Ensure events that modify date and time information are collected"
+#   template:
+#       src: audit/rhel7cis_rule_4_1_4.rules.j2
+#       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_4.rules
+#       owner: root
+#       group: root
+#       mode: 0600
+#   when:
+#       - rhel7cis_rule_4_1_4|bool
+#   notify: restart auditd
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.4
+
+# - name: "SCORED | 4.1.5 | PATCH | Ensure events that modify user/group information are collected"
+#   template:
+#       src: audit/rhel7cis_rule_4_1_5.rules.j2
+#       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_5.rules
+#       owner: root
+#       group: root
+#       mode: 0600
+#   when:
+#       - rhel7cis_rule_4_1_5|bool
+#   notify: restart auditd
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.5
+
+# - name: "SCORED | 4.1.6 | PATCH | Ensure events that modify the system's network environment are collected"
+#   template:
+#       src: audit/rhel7cis_rule_4_1_6.rules.j2
+#       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_6.rules
+#       owner: root
+#       group: root
+#       mode: 0600
+#   when:
+#       - rhel7cis_rule_4_1_6|bool
+#   notify: restart auditd
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.6
+
+# - name: "SCORED | 4.1.7 | PATCH | Ensure events that modify the system's Mandatory Access Controls are collected"
+#   template:
+#       src: audit/rhel7cis_rule_4_1_7.rules.j2
+#       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_7.rules
+#       owner: root
+#       group: root
+#       mode: 0600
+#   when:
+#       - rhel7cis_rule_4_1_7|bool
+#   notify: restart auditd
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.7
+
+# - name: "SCORED | 4.1.8 | PATCH | Ensure login and logout events are collected"
+#   template:
+#       src: audit/rhel7cis_rule_4_1_8.rules.j2
+#       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_8.rules
+#       owner: root
+#       group: root
+#       mode: 0600
+#   when:
+#       - rhel7cis_rule_4_1_8|bool
+#   notify: restart auditd
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.8
+
+# - name: "SCORED | 4.1.9 | PATCH | Ensure session initiation information is collected"
+#   template:
+#       src: audit/rhel7cis_rule_4_1_9.rules.j2
+#       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_9.rules
+#       owner: root
+#       group: root
+#       mode: 0600
+#   when:
+#       - rhel7cis_rule_4_1_9|bool
+#   notify: restart auditd
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.9
+
+# - name: "SCORED | 4.1.10 | PATCH | Ensure discretionary access control permission modification events are collected"
+#   template:
+#       src: audit/rhel7cis_rule_4_1_10.rules.j2
+#       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_10.rules
+#       owner: root
+#       group: root
+#       mode: 0600
+#   when:
+#       - rhel7cis_rule_4_1_10|bool
+#   notify: restart auditd
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.10
+
+# - name: "SCORED | 4.1.11 | PATCH | Ensure unsuccessful unauthorized file access attempts are collected"
+#   template:
+#       src: audit/rhel7cis_rule_4_1_11.rules.j2
+#       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_11.rules
+#       owner: root
+#       group: root
+#       mode: 0600
+#   when:
+#       - rhel7cis_rule_4_1_11|bool
+#   notify: restart auditd
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.11
+
+# - name: "SCORED | 4.1.12 | PATCH | Ensure use of privileged commands is collected"
+#   shell: for i in  $(df | grep '^/dev' | awk '{ print $NF }'); do find $i -xdev -type f -perm -4000 -o -type f -perm -2000 2>/dev/null; done
+#   register: priv_procs
+#   changed_when: no
+#   check_mode: no
+#   when:
+#       - rhel7cis_rule_4_1_12|bool
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.12
+
+# - name: "SCORED | 4.1.12 | PATCH | Ensure use of privileged commands is collected"
+#   template:
+#       src: audit/rhel7cis_rule_4_1_12.rules.j2
+#       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_12.rules
+#       owner: root
+#       group: root
+#       mode: 0600
+#   notify: restart auditd
+#   when:
+#       - rhel7cis_rule_4_1_12|bool
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.12
+
+# - name: "SCORED | 4.1.13 | PATCH | Ensure successful file system mounts are collected"
+#   template:
+#       src: audit/rhel7cis_rule_4_1_13.rules.j2
+#       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_13.rules
+#       owner: root
+#       group: root
+#       mode: 0600
+#   when:
+#       - rhel7cis_rule_4_1_13|bool
+#   notify: restart auditd
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.13
+
+# - name: "SCORED | 4.1.14 | PATCH | Ensure file deletion events by users are collected"
+#   template:
+#       src: audit/rhel7cis_rule_4_1_14.rules.j2
+#       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_14.rules
+#       owner: root
+#       group: root
+#       mode: 0600
+#   when:
+#       - rhel7cis_rule_4_1_14|bool
+#   notify: restart auditd
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.14
+
+# - name: "SCORED | 4.1.15 | PATCH | Ensure changes to system administration scope (sudoers) is collected"
+#   template:
+#       src: audit/rhel7cis_rule_4_1_15.rules.j2
+#       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_15.rules
+#       owner: root
+#       group: root
+#       mode: 0600
+#   when:
+#       - rhel7cis_rule_4_1_15|bool
+#   notify: restart auditd
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.15
+
+# - name: "SCORED | 4.1.16 | PATCH | Ensure system administrator actions (sudolog) are collected"
+#   template:
+#       src: audit/rhel7cis_rule_4_1_16.rules.j2
+#       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_16.rules
+#       owner: root
+#       group: root
+#       mode: 0600
+#   when:
+#       - rhel7cis_rule_4_1_16|bool
+#   notify: restart auditd
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.16
+
+# - name: "SCORED | 4.1.17 | PATCH | Ensure kernel module loading and unloading is collected"
+#   template:
+#       src: audit/rhel7cis_rule_4_1_17.rules.j2
+#       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_17.rules
+#       owner: root
+#       group: root
+#       mode: 0600
+#   when:
+#       - rhel7cis_rule_4_1_17|bool
+#   notify: restart auditd
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.17
+
+# - name: "SCORED | 4.1.18 | PATCH | Ensure the audit configuration is immutable"
+#   template:
+#       src: audit/rhel7cis_rule_4_1_18.rules.j2
+#       dest: /etc/audit/rules.d/rhel7cis_rule_4_1_18.rules
+#       owner: root
+#       group: root
+#       mode: 0600
+#   when:
+#       - rhel7cis_rule_4_1_18|bool
+#   notify: restart auditd
+#   tags:
+#       - level2
+#       - auditd
+#       - patch
+#       - rule_4.1.18
+
+# - name: "SCORED | 4.2.3 | PATCH | Ensure rsyslog or syslog-ng is installed"
+#   yum:
+#       name: "{{ rhel7cis_syslog }}"
+#       state: present
+#   when:
+#       - rhel7cis_rule_4_2_3|bool
+#   tags:
+#       - level1
+#       - patch
+#       - rule_4.2.3
+
+# - name: "SCORED | 4.2.1.1 | PATCH | Ensure rsyslog Service is enabled"
+#   service:
+#       name: rsyslog
+#       enabled: yes
+#   when:
+#       - rhel7cis_rule_4_2_1_1|bool
+#       - rhel7cis_syslog == 'rsyslog'
+#   tags:
+#       - level2
+#       - patch
+#       - rsyslog
+#       - rule_4.2.1.1
+
+# - name: "NOTSCORED | 4.2.1.2 | PATCH | Ensure logging is configured"
+#   block:
+#       - name: "NOTSCORED | 4.2.1.2 | AUDIT | Ensure logging is configured | rsyslog current config message out"
+#         command: cat /etc/rsyslog.conf
+#         become: yes
+#         changed_when: false
+#         failed_when: no
+#         register: rhel_07_4_2_1_2_audit
+#       - debug:
+#             msg:
+#                 - "These are the current logging configurations for rsyslog, please review:"
+#                 - "{{ rhel_07_4_2_1_2_audit.stdout_lines }}"
+
+#       - name: "NOTSCORED | 4.2.1.2 | PATCH | Ensure logging is configured | mail.* log setting"
+#         lineinfile:
+#             path: /etc/rsyslog.conf
+#             state: present
+#             regexp: '^mail\.\*(.*)$'
+#             line: 'mail.*                                                  -/var/log/mail'
+#             insertafter: '# Log all the mail messages in one place.'
+#         notify: restart rsyslog
+#         when:
+#             - rhel7cis_rsyslog_ansibleManaged
+
+#       - name: "NOTSCORED | 4.2.1.2 | PATCH | Ensure logging is configured | mail.info log setting"
+#         lineinfile:
+#             path: /etc/rsyslog.conf
+#             state: present
+#             regexp: '^mail\.\info(.*)$'
+#             line: 'mail.info                                               -/var/log/mail.info'
+#             insertafter: '# Log all the mail messages in one place.'
+#         notify: restart rsyslog
+#         when:
+#             - rhel7cis_rsyslog_ansibleManaged
+
+#       - name: "NOTSCORED | 4.2.1.2 | PATCH | Ensure logging is configured | mail.warning log setting"
+#         lineinfile:
+#             path: /etc/rsyslog.conf
+#             state: present
+#             regexp: '^mail\.\warning(.*)$'
+#             line: 'mail.warning                                            -/var/log/mail.warning'
+#             insertafter: '# Log all the mail messages in one place.'
+#         notify: restart rsyslog
+#         when:
+#             - rhel7cis_rsyslog_ansibleManaged
+
+#       - name: "NOTSCORED | 4.2.1.2 | PATCH | Ensure logging is configured | mail.err log setting"
+#         lineinfile:
+#             path: /etc/rsyslog.conf
+#             state: present
+#             regexp: '^mail\.\err(.*)$'
+#             line: 'mail.err                                                /var/log/mail.err'
+#             insertafter: '# Log all the mail messages in one place.'
+#         notify: restart rsyslog
+#         when:
+#             - rhel7cis_rsyslog_ansibleManaged
+
+#       - name: "NOTSCORED | 4.2.1.2 | PATCH | Ensure logging is configured | news.crit log setting"
+#         lineinfile:
+#             path: /etc/rsyslog.conf
+#             state: present
+#             regexp: '^news\.\crit(.*)$'
+#             line: 'news.crit                                               -/var/log/news/news.crit'
+#             insertafter: '# Save news errors of level crit and higher in a special file.'
+#         notify: restart rsyslog
+#         when:
+#             - rhel7cis_rsyslog_ansibleManaged
+
+#       - name: "NOTSCORED | 4.2.1.2 | PATCH | Ensure logging is configured | news.notice log setting"
+#         lineinfile:
+#             path: /etc/rsyslog.conf
+#             state: present
+#             regexp: '^news\.\notice(.*)$'
+#             line: 'news.notice                                             -/var/log/news/news.crit'
+#             insertafter: '# Save news errors of level crit and higher in a special file.'
+#         notify: restart rsyslog
+#         when:
+#             - rhel7cis_rsyslog_ansibleManaged
+
+#       - name: "NOTSCORED | 4.2.1.2 | PATCH | Ensure logging is configured | Misc. log setting"
+#         blockinfile:
+#             path: /etc/rsyslog.conf
+#             state: present
+#             regexp: '^news\.\notice(.*)$'
+#             marker: "# {mark} MISC. LOG SETTINGS (ANSIBLE MANAGED)"
+#             block: |
+#                 # misc. logging additions to meet CIS standards
+#                 *.=warning;*.=err                                        -/var/log/warn
+#                 *.crit                                                   /var/log/warn
+#                 *.*;mail.none;news.none                                  /var/log/messages
+#             insertafter: '#### RULES ####'
+#         notify: restart rsyslog
+#         when:
+#             - rhel7cis_rsyslog_ansibleManaged
+
+#       - name: "NOTSCORED | 4.2.1.2 | PATCH | Ensure logging is configured | Local log settings"
+#         blockinfile:
+#             path: /etc/rsyslog.conf
+#             state: present
+#             regexp: '^news\.\notice(.*)$'
+#             marker: "#{mark} LOCAL LOG SETTINGS (ANSIBLE MANAGED)"
+#             block: |
+#                 # local log settings
+#                 local0,local1.*                                          -/var/log/localmessages
+#                 local2,local3.*                                          -/var/log/localmessages
+#                 local4,local5.*                                          -/var/log/localmessages
+#                 local6,local7.*                                          -/var/log/localmessages
+#             insertafter: '#### RULES ####'
+#         notify: restart rsyslog
+#   when:
+#       - rhel7cis_rule_4_2_1_2|bool
+#   tags:
+#       - level1
+#       - patch
+#       - rsyslog
+#       - rule_4.2.1.2
+
+# - name: "SCORED | 4.2.1.3 | PATCH | Ensure rsyslog default file permissions configured"
+#   lineinfile:
+#       dest: /etc/rsyslog.conf
+#       regexp: '^\$FileCreateMode'
+#       line: '$FileCreateMode 0640'
+#   notify: restart rsyslog
+#   when:
+#       - rhel7cis_rule_4_2_1_3|bool
+#   tags:
+#       - level1
+#       - patch
+#       - rule_4.2.1.3
+
+# - name: "SCORED | 4.2.1.4 | PATCH | Ensure rsyslog is configured to send logs to a remote log host"
+#   blockinfile:
+#       path: /etc/rsyslog.conf
+#       state: present
+#       block: |
+#           # remote host is: name/ip:port, e.g. 192.168.0.1:514, port optional
+#           *.* @@{{ rhel7cis_remote_log_server }}
+#       insertafter: EOF
+#   register: result
+#   failed_when:
+#       - result is failed
+#       - result.rc != 257
+#   notify: restart rsyslog
+#   when:
+#       - rhel7cis_rule_4_2_1_4|bool
+#       - rhel7cis_remote_log_server is defined
+#   tags:
+#       - level1
+#       - patch
+#       - rule_4.2.1.4
+#       - rsyslog
+
+# - name: "NOTSCORED | 4.2.1.5 | PATCH | Ensure remote rsyslog messages are only accepted on designated log hosts."
+#   block:
+#       - name: "NOTSCORED | 4.2.1.5 | PATCH | Ensure remote rsyslog messages are only accepted on designated log hosts. | When not log host"
+#         replace:
+#             path: /etc/rsyslog.conf
+#             regexp: '({{ item }})'
+#             replace: '#\1'
+#         with_items:
+#             - '^(\$ModLoad imtcp)'
+#             - '^(\$InputTCPServerRun)'
+#         notify: restart rsyslog
+#         when:
+#             - not rhel7cis_system_is_log_server
+
+#       - name: "NOTSCORED | 4.2.1.5 | PATCH | Ensure remote rsyslog messages are only accepted on designated log hosts. | When log host"
+#         replace:
+#             path: /etc/rsyslog.conf
+#             regexp: '^#(.*{{ item }}.*)'
+#             replace: '\1'
+#         with_items:
+#             - 'ModLoad imtcp'
+#             - 'InputTCPServerRun'
+#         notify: restart rsyslog
+#         when:
+#             - rhel7cis_system_is_log_server
+#   when:
+#       - rhel7cis_rule_4_2_1_5|bool
+#   tags:
+#       - level1
+#       - patch
+#       - rule_4.2.1.5
+#       - rsyslog
+
+# - name: "SCORED | 4.2.2.1 | PATCH | Ensure syslog-ng service is enabled"
+#   service:
+#       name: syslog-ng
+#       enabled: yes
+#   when:
+#       - rhel7cis_rule_4_2_1_1|bool
+#       - rhel7cis_syslog == 'syslog-ng'
+#   tags:
+#       - level2
+#       - patch
+#       - rsyslog
+#       - rule_4.2.1.1
+
+# - name: "NOTSCORED | 4.2.2.2 | AUDIT | Ensure logging is configured"
+#   command: cat /etc/syslog-ng/syslog-ng.conf
+#   become: yes
+#   register: rhel_07_4_2_2_2_audit
+#   changed_when: false
+#   failed_when: no
+# - debug:
+#       msg:
+#           - "Here is the current syslog-ng logging configuration. Please ensure appropriate logging is set for your facility:"
+#           - "{{ rhel_07_4_2_2_2_audit.stdout_lines }}"
+#   notify: restart syslog-ng
+#   when:
+#       - rhel7cis_rule_4_2_2_2|bool
+#       - rhel7cis_syslog == 'syslog-ng'
+#   tags:
+#       - level1
+#       - patch
+#       - rule_4.2.2.2
+
+# - name: "SCORED | 4.2.2.3 | PATCH | Ensure syslog-ng default file permissions configured"
+#   lineinfile:
+#       dest: /etc/syslog-ng/syslog-ng.conf
+#       regexp: "^#options {  "
+#       line: "    perm (0640);"
+#       insertbefore: 'chain_hostnames '
+#   notify: restart syslog-ng
+#   when:
+#       - rhel7cis_rule_4_2_2_3|bool
+#       - rhel7cis_syslog == 'syslog-ng'
+#   tags:
+#       - level1
+#       - patch
+#       - syslog-ng
+#       - rule_4.2.2.3
+
+# - name: "NOTSCORED | 4.2.2.4 | PATCH | Ensure syslog-ng is configured to send logs to a remote log host"
+#   block:
+#       - name: "NOTSCORED | 4.2.2.4 | PATCH | Ensure syslog-ng is configured to send logs to a remote log host | Insert destation data"
+#         lineinfile:
+#             path: /etc/syslog-ng/syslog-ng.conf
+#             state: present
+#             regexp: '^destination logserver.*'
+#             line: "destination logserver { tcp({{ rhel7cis_remote_log_server }} port(514)); };"
+#         notify: restart syslog-ng
+
+#       - name: "NOTSCORED | 4.2.2.4 | PATCH | Ensure syslog-ng is configured to send logs to a remote log host | Insert log data"
+#         lineinfile:
+#             path: /etc/syslog-ng/syslog-ng.conf
+#             state: present
+#             regexp: '^log.*'
+#             line: "log { source(src); destination(logserver); };"
+#             insertafter: '^log.*'
+#         notify: restart syslog-ng
+#   when:
+#       - rhel7cis_rule_4_2_2_4|bool
+#       - rhel7cis_syslog == 'syslog-ng'
+#   tags:
+#       - level1
+#       - patch
+#       - syslog-ng
+#       - rule_4.2.2.4
+
+# - name: "NOTSCORED | 4.2.2.5 | PATCH | Ensure remote syslog-ng messages are only accepted on designated log hosts"
+#   block:
+#       - name: "NOTSCORED | 4.2.2.5 | PATCH | Ensure remote syslog-ng messages are only accepted on designated log hosts | Add source net setting"
+#         lineinfile:
+#             path: /etc/syslog-ng/syslog-ng.conf
+#             state: present
+#             regexp: '^source net.*'
+#             line: "source net{ tcp(); };"
+#         notify: restart syslog-ng
+#         when:
+#             - rhel7cis_syslog == 'syslog-ng'
+#             - rhel7cis_system_is_log_server
+
+#       - name: "NOTSCORED | 4.2.2.5 | PATCH | Ensure remote syslog-ng messages are only accepted on designated log hosts | Add destionation setting"
+#         lineinfile:
+#             path: /etc/syslog-ng/syslog-ng.conf
+#             state: present
+#             regexp: '^destination remote.*'
+#             line: 'destination remote { file("/var/log/remote/${FULLHOST}-log"); };'
+#         notify: restart syslog-ng
+#         when:
+#             - rhel7cis_syslog == 'syslog-ng'
+#             - rhel7cis_system_is_log_server
+
+#       - name: "NOTSCORED | 4.2.2.5 | PATCH | Ensure remote syslog-ng messages are only accepted on designated log hosts | Add log setting"
+#         lineinfile:
+#             path: /etc/syslog-ng/syslog-ng.conf
+#             state: present
+#             regexp: '^log.*'
+#             line: "log { source(net); destination(remote); };"
+#         notify: restart syslog-ng
+#         when:
+#             - rhel7cis_syslog == 'syslog-ng'
+#             - rhel7cis_system_is_log_server
+
+#       - name: "NOTSCORED | 4.2.2.5 | PATCH | Ensure remote syslog-ng messages are only accepted on designated log hosts | Remove source net setting"
+#         replace:
+#             path: /etc/syslog-ng/syslog-ng.conf
+#             regexp: '({{ item }})'
+#             replace: '#/1'
+#         with_items:
+#             - '^(\source net)'
+#             - '^(\destination remote)'
+#             - '^(log { source\(net\))'
+#         notify: restart syslog-ng
+#         when:
+#             - rhel7cis_syslog == 'syslog-ng'
+#             - not rhel7cis_system_is_log_server
+#   when:
+#       - rhel7cis_rule_4_2_2_5|bool
+#   tags:
+#       - level1
+#       - patch
+#       - syslog-ng
+#       - rule_4.2.2.5
+
+# - name: "SCORED | 4.2.4 | PATCH | Ensure permissions on all logfiles are configured"
+#   command: find /var/log -type f -exec chmod g-wx,o-rwx {} +
+#   changed_when: no
+#   failed_when: no
+#   when:
+#       - rhel7cis_rule_4_2_4|bool
+#   tags:
+#       - level1
+#       - patch
+#       - rule_4.2.4
+
+# - name: "NOTSCORED | 4.3 | PATCH | Ensure logrotate is configured"
+#   find:
+#       paths: /etc/logrotate.d/
+#   register: log_rotates
+#   tags:
+#       - level1
+#       - patch
+#       - rule_4.3
+
+# - name: "NOTSCORED | 4.3 | PATCH | Ensure logrotate is configured"
+#   replace:
+#       path: "{{ item.path }}"
+#       regexp: '^(\s*)(daily|weekly|monthly|yearly)$'
+#       replace: "\\1{{ rhel7cis_logrotate }}"
+#   with_items:
+#       - "{{ log_rotates.files }}"
+#       - { path: "/etc/logrotate.conf" }
+#   tags:
+#       - level1
+#       - patch
+#       - rule_4.3
