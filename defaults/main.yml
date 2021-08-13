@@ -42,8 +42,8 @@ rhel7cis_run_audit: false
 
 
 # Enable/Disable SELinux
-rhel7cis_selinux_disable: false
-rhel7cis_selinux_state: enforcing
+rhel7cis_selinux_disable: true
+rhel7cis_selinux_state: permissive
 
 # Misc. environment variables
 rhel7cis_skip_for_travis: false
@@ -110,7 +110,7 @@ rhel7cis_rule_1_7_1_1: true
 rhel7cis_rule_1_7_1_2: true
 rhel7cis_rule_1_7_1_3: true
 rhel7cis_rule_1_7_1_4: true
-rhel7cis_rule_1_7_1_5: true
+rhel7cis_rule_1_7_1_5: false
 rhel7cis_rule_1_7_1_6: true
 rhel7cis_rule_1_7_1_7: true
 rhel7cis_rule_1_7_1_8: true
@@ -120,7 +120,7 @@ rhel7cis_rule_1_8_1_3: true
 rhel7cis_rule_1_8_1_4: true
 rhel7cis_rule_1_8_1_5: true
 rhel7cis_rule_1_8_1_6: true
-rhel7cis_rule_1_9: true
+rhel7cis_rule_1_9: false
 rhel7cis_rule_1_10: true
 
 # Section 2 rules
@@ -132,15 +132,15 @@ rhel7cis_rule_2_1_4: true
 rhel7cis_rule_2_1_5: true
 rhel7cis_rule_2_1_6: true
 rhel7cis_rule_2_1_7: true
-rhel7cis_rule_2_2_1_1: true
-rhel7cis_rule_2_2_1_2: true
-rhel7cis_rule_2_2_1_3: true
+rhel7cis_rule_2_2_1_1: false
+rhel7cis_rule_2_2_1_2: false
+rhel7cis_rule_2_2_1_3: false
 rhel7cis_rule_2_2_2: true
 rhel7cis_rule_2_2_3: true
 rhel7cis_rule_2_2_4: true
 rhel7cis_rule_2_2_5: true
 rhel7cis_rule_2_2_6: true
-rhel7cis_rule_2_2_7: true
+rhel7cis_rule_2_2_7: false
 rhel7cis_rule_2_2_8: true
 rhel7cis_rule_2_2_9: true
 rhel7cis_rule_2_2_10: true
@@ -182,7 +182,7 @@ rhel7cis_rule_3_4_2: true
 rhel7cis_rule_3_5_1_1: true
 rhel7cis_rule_3_5_1_2: true
 rhel7cis_rule_3_5_1_3: true
-rhel7cis_rule_3_5_1_4: true
+rhel7cis_rule_3_5_1_4: false
 rhel7cis_rule_3_5_1_5: true
 rhel7cis_rule_3_5_1_6: true
 rhel7cis_rule_3_5_1_7: true
@@ -191,7 +191,7 @@ rhel7cis_rule_3_5_2_2: true
 rhel7cis_rule_3_5_2_3: true
 rhel7cis_rule_3_5_2_4: true
 rhel7cis_rule_3_5_2_5: true
-rhel7cis_rule_3_5_2_6: true
+rhel7cis_rule_3_5_2_6: 
 rhel7cis_rule_3_5_2_7: true
 rhel7cis_rule_3_5_2_8: true
 rhel7cis_rule_3_5_2_9: true
@@ -219,7 +219,7 @@ rhel7cis_rule_4_1_1_1: true
 rhel7cis_rule_4_1_1_2: true
 rhel7cis_rule_4_1_1_3: true
 rhel7cis_rule_4_1_2_1: true
-rhel7cis_rule_4_1_2_2: true
+rhel7cis_rule_4_1_2_2: false
 rhel7cis_rule_4_1_2_3: true
 rhel7cis_rule_4_1_2_4: true
 rhel7cis_rule_4_1_3: true
@@ -279,7 +279,7 @@ rhel7cis_rule_5_2_16: true
 rhel7cis_rule_5_2_17: true
 rhel7cis_rule_5_2_18: true
 rhel7cis_rule_5_2_19: true
-rhel7cis_rule_5_2_20: true
+rhel7cis_rule_5_2_20: false
 rhel7cis_rule_5_2_21: true
 rhel7cis_rule_5_2_22: true
 rhel7cis_rule_5_3_1: true
@@ -322,10 +322,10 @@ rhel7cis_rule_6_2_5: true
 rhel7cis_rule_6_2_6: true
 rhel7cis_rule_6_2_7: true
 rhel7cis_rule_6_2_8: true
-rhel7cis_rule_6_2_9: true
-rhel7cis_rule_6_2_10: true
+rhel7cis_rule_6_2_9: false
+rhel7cis_rule_6_2_10: false
 rhel7cis_rule_6_2_11: true
-rhel7cis_rule_6_2_12: true
+rhel7cis_rule_6_2_12: false
 rhel7cis_rule_6_2_13: true
 rhel7cis_rule_6_2_14: true
 rhel7cis_rule_6_2_15: true
@@ -441,14 +441,16 @@ rhel7cis_firewall_services:
 
 # Warning Banner Content (issue, issue.net, motd)
 rhel7cis_warning_banner: |
-    Authorized uses only. All activity may be monitored and reported.
+    THIS SYSTEM IS FOR AUTHORISED USERS ONLY.
+
+    This is a private system; only use this system if you have specific authority to do so. Otherwise you are liable to prosecution under the Computer Misuse Act 1990. If you do not have the express permission of the operator or owner of this system, switch off now to avoid prosecution.
 # End Banner
 
 ## Section4 vars
 
 # auditd settings
 rhel7cis_auditd:
-  space_left_action: email
+  space_left_action: syslog
   action_mail_acct: root
   admin_space_left_action: halt
   max_log_file_action: keep_logs
@@ -540,7 +542,7 @@ rhel7cis_int_gid: 1000
 rhel7cis_rpm_audit_file: /var/tmp/rpm_file_check
 
 # RHEL-07_6.1.10 Allow ansible to adjust world-writable files. False will just display world-writable files, True will remove world-writable
-rhel7cis_no_world_write_adjust: true
+rhel7cis_no_world_write_adjust: false
 rhel7cis_passwd_label: "{{ (this_item | default(item)).id }}: {{ (this_item | default(item)).dir }}"
 rhel7cis_dotperm_ansibleManaged: true
 

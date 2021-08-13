@@ -1,8 +1,12 @@
 ---
-- hosts: all
+- hosts: rhel_7
+  serial: 4
+  ignore_unreachable: yes
+  ignore_errors: yes
   become: true
   vars:
     is_container: false
 
   roles:
   - role: "{{ playbook_dir }}"
+    when: (ansible_facts['distribution'] == "RedHat" and ansible_facts['distribution_major_version'] == "7")
